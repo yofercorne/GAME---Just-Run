@@ -1,0 +1,13 @@
+.chess-board {
+  
+  width: 400px;
+  height: 400px;
+}
+
+.square {
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+}
