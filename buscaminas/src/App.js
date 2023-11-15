@@ -1,115 +1,195 @@
-import './App.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBomb, faFlag } from '@fortawesome/free-solid-svg-icons';
 import React, { useState, useEffect, useRef } from 'react';
+import AudioPlayer from 'react-audio-player';
 
-const columna = 5;
-const fila = 5;
+const columnas = 12;
+const filas = 20;
 
 const ChessBoard = () => {
-  const cantidad_bombs = (17 / 100) * fila * columna;
+  const [musicaReproduciendo, setMusicaReproduciendo] = useState(false);
+  const [pintarCeldas, setPintarCeldas] = useState(false);
+  const urlMusica = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
 
-  const [isCellOpen, setIsCellOpen] = useState(Array(fila * columna).fill(false));
-  const [isFlagged, setIsFlagged] = useState(Array(fila * columna).fill(false));
+  const cantidadBombas = (17 / 100) * filas * columnas;
+  const [celdaAbierta, setCeldaAbierta] = useState(Array(filas * columnas).fill(false));
+  const [banderaPuesta, setBanderaPuesta] = useState(Array(filas * columnas).fill(false));
   const [bombas, setBombas] = useState([]);
-  const hasInitialized = useRef(false);
+  const [posicionJugador, setPosicionJugador] = useState({ fila: 0, columna: 0 });
+  const juegoIniciado = useRef(false);
+  const juegoTerminado = useRef(false);
 
   useEffect(() => {
-    if (!hasInitialized.current) {
-      const generateRandombombas = () => {
-        const randomPositions = [];
-        while (randomPositions.length < cantidad_bombs) {
-          const randomRow = Math.floor(Math.random() * fila);
-          const randomCol = Math.floor(Math.random() * columna);
-          const position = `${randomRow}-${randomCol}`;
-          if (!randomPositions.includes(position)) {
-            randomPositions.push(position);
+    if (!juegoIniciado.current) {
+      const generarBombasAleatorias = () => {
+        const posicionesAleatorias = [];
+        while (posicionesAleatorias.length < cantidadBombas) {
+          const filaAleatoria = Math.floor(Math.random() * filas);
+          const columnaAleatoria = Math.floor(Math.random() * columnas);
+          const posicion = `${filaAleatoria}-${columnaAleatoria}`;
+          if (!posicionesAleatorias.includes(posicion)) {
+            posicionesAleatorias.push(posicion);
           }
         }
-        return randomPositions;
+        return posicionesAleatorias;
       };
 
-      const generatedBombas = generateRandombombas();
+      const bombasGeneradas = generarBombasAleatorias();
 
-      // Calcular la probabilidad de casillas abiertas
-      const openLastSquaresProbability = Math.random();
-      let numberOfOpenLastSquares = 0;
+      const probabilidadUltimasCeldasAbiertas = Math.random();
+      let numeroUltimasCeldasAbiertas = 0;
 
-      if (openLastSquaresProbability <= 0.5) {
-        numberOfOpenLastSquares = 6;
-      } else if (openLastSquaresProbability <= 0.75) {
-        numberOfOpenLastSquares = 7;
+      if (probabilidadUltimasCeldasAbiertas <= 0.5) {
+        numeroUltimasCeldasAbiertas = 6;
+      } else if (probabilidadUltimasCeldasAbiertas <= 0.75) {
+        numeroUltimasCeldasAbiertas = 7;
       } else {
-        numberOfOpenLastSquares = 8;
+        numeroUltimasCeldasAbiertas = 8;
       }
 
-      // Marcar las últimas casillas como abiertas sin bombas
-      const totalSquares = fila * columna;
-      let openSquares = 0;
+      const totalCeldas = filas * columnas;
+      let celdasAbiertas = 0;
 
-      setIsCellOpen((prevIsCellOpen) => {
-        const newIsCellOpen = [...prevIsCellOpen];
-        for (let i = totalSquares - 1; i >= 0; i--) {
-          if (openSquares < numberOfOpenLastSquares) {
-            const row = Math.floor(i / columna);
-            const col = i % columna;
-            if (!generatedBombas.includes(`${row}-${col}`)) {
-              newIsCellOpen[i] = true;
-              openSquares++;
+      setCeldaAbierta((prevCeldaAbierta) => {
+        const nuevaCeldaAbierta = [...prevCeldaAbierta];
+        for (let i = totalCeldas - 1; i >= 0; i--) {
+          if (celdasAbiertas < numeroUltimasCeldasAbiertas) {
+            const fila = Math.floor(i / columnas);
+            const columna = i % columnas;
+            if (!bombasGeneradas.includes(`${fila}-${columna}`)) {
+              nuevaCeldaAbierta[i] = true;
+              celdasAbiertas++;
             }
           }
         }
-        return newIsCellOpen;
+        return nuevaCeldaAbierta;
       });
 
-      setBombas(generatedBombas);
-      hasInitialized.current = true;
-    }
-  }, [cantidad_bombs]);
+      setBombas(bombasGeneradas);
+      setPosicionJugador({ fila: filas - 1, columna: Math.floor(columnas / 2) }); // Posicionar al jugador en la última fila
+      juegoIniciado.current = true;
 
-  const handleCellClick = (index, isRightClick) => {
-    if (isCellOpen[index]) {
+      setTimeout(() => {
+        setPintarCeldas(true);
+      }, 10000); // Pinta las celdas después de 10 segundos
+    }
+  }, [cantidadBombas]);
+  
+
+  useEffect(() => {
+    if (pintarCeldas && !juegoTerminado.current) {
+      const intervalId = setInterval(() => {
+        const ultimaFila = filas - 1;
+        const ultimaColumna = columnas - 1;
+        const nuevaCeldaAbierta = [...celdaAbierta];
+
+        for (let columna = ultimaColumna; columna >= 0; columna--) {
+          const indice = ultimaFila * columnas + columna;
+          if (!nuevaCeldaAbierta[indice]) {
+            nuevaCeldaAbierta[indice] = true;
+            setCeldaAbierta([...nuevaCeldaAbierta]);
+            break;
+          }
+        }
+
+        const todasCeldasAbiertas = nuevaCeldaAbierta.every((celda) => celda === true);
+        if (todasCeldasAbiertas) {
+          clearInterval(intervalId);
+        }
+      }, 1000);
+
+      return () => clearInterval(intervalId);
+    }
+  }, [pintarCeldas, juegoTerminado, celdaAbierta, filas, columnas]);
+  
+
+
+useEffect(() => {
+  const manejarPresionTecla = (evento) => {
+    if (juegoTerminado.current) {
       return;
     }
 
-    const newIsFlagged = [...isFlagged];
-    if (isRightClick) {
-      newIsFlagged[index] = !isFlagged[index];
-      setIsFlagged(newIsFlagged); // Actualiza el estado de las banderas.
-    } else {
-      if (newIsFlagged[index]) {
-        // Si ya hay una bandera en la celda, quitarla
-        newIsFlagged[index] = false;
-        setIsFlagged(newIsFlagged); // Actualiza el estado de las banderas.
+    const { key } = evento;
+    setPosicionJugador((prevPosicion) => {
+      let newRow = prevPosicion.fila;
+      let newCol = prevPosicion.columna;
+
+      switch (key) {
+        case 'ArrowUp':
+          newRow = Math.max(0, newRow - 1);
+          break;
+        case 'ArrowDown':
+          newRow = Math.min(filas - 1, newRow + 1);
+          break;
+        case 'ArrowLeft':
+          newCol = Math.max(0, newCol - 1);
+          break;
+        case 'ArrowRight':
+          newCol = Math.min(columnas - 1, newCol + 1);
+          break;
+        default:
+          break;
+      }
+      
+      if (bombas.includes(`${newRow}-${newCol}`)) {
+        alert('¡Has perdido!');
+        juegoTerminado.current = true;
+        // Tratar la pérdida del juego aquí
       } else {
-        // Si no hay bandera, abrir la celda
-        const newIsCellOpen = [...isCellOpen];
-        newIsCellOpen[index] = true;
-        setIsCellOpen(newIsCellOpen); // Actualiza el estado de las celdas abiertas.
+        return { fila: newRow, columna: newCol };
+      }
+    });
+  };
 
-        if (countAdjacentBombs(Math.floor(index / columna), index % columna) === 0) {
-          const cellsToOpen = [{ row: Math.floor(index / columna), col: index % columna }];
+  window.addEventListener('keydown', manejarPresionTecla);
+  return () => {
+    window.removeEventListener('keydown', manejarPresionTecla);
+  };
+}, [bombas, juegoTerminado]);
+  
+  const manejarClicCelda = (indice, clicDerecho) => {
+    if (celdaAbierta[indice] || juegoTerminado.current) {
+      return;
+    }
 
-          while (cellsToOpen.length > 0) {
-            const { row, col } = cellsToOpen.pop();
+    const nuevaBanderaPuesta = [...banderaPuesta];
+    if (clicDerecho) {
+      nuevaBanderaPuesta[indice] = !banderaPuesta[indice];
+      setBanderaPuesta(nuevaBanderaPuesta);
+    } else {
+      if (nuevaBanderaPuesta[indice]) {
+        nuevaBanderaPuesta[indice] = false;
+        setBanderaPuesta(nuevaBanderaPuesta);
+      } else {
+        const nuevaCeldaAbierta = [...celdaAbierta];
+        nuevaCeldaAbierta[indice] = true;
+        setCeldaAbierta(nuevaCeldaAbierta);
 
-            const directions = [
+        if (contarBombasAdyacentes(Math.floor(indice / columnas), indice % columnas) === 0) {
+          const celdasPorAbrir = [{ fila: Math.floor(indice / columnas), columna: indice % columnas }];
+
+          while (celdasPorAbrir.length > 0) {
+            const { fila, columna } = celdasPorAbrir.pop();
+
+            const direcciones = [
               [-1, -1], [-1, 0], [-1, 1],
               [0, -1], [0, 1],
               [1, -1], [1, 0], [1, 1]
             ];
 
-            for (const [dr, dc] of directions) {
-              const newRow = row + dr;
-              const newCol = col + dc;
-              const newIndex = newRow * columna + newCol;
+            for (const [df, dc] of direcciones) {
+              const nuevaFila = fila + df;
+              const nuevaColumna = columna + dc;
+              const nuevoIndice = nuevaFila * columnas + nuevaColumna;
 
-              if (newRow >= 0 && newRow < fila && newCol >= 0 && newCol < columna && !newIsCellOpen[newIndex] && !isFlagged[newIndex]) {
-                newIsCellOpen[newIndex] = true;
-                setIsCellOpen(newIsCellOpen); // Actualiza el estado de las celdas abiertas.
+              if (nuevaFila >= 0 && nuevaFila < filas && nuevaColumna >= 0 && nuevaColumna < columnas &&
+                !nuevaCeldaAbierta[nuevoIndice] && !banderaPuesta[nuevoIndice]) {
+                nuevaCeldaAbierta[nuevoIndice] = true;
+                setCeldaAbierta(nuevaCeldaAbierta);
 
-                if (countAdjacentBombs(newRow, newCol) === 0) {
-                  cellsToOpen.push({ row: newRow, col: newCol });
+                if (contarBombasAdyacentes(nuevaFila, nuevaColumna) === 0) {
+                  celdasPorAbrir.push({ fila: nuevaFila, columna: nuevaColumna });
                 }
               }
             }
@@ -119,139 +199,170 @@ const ChessBoard = () => {
     }
   };
 
-  const handleDoubleCellClick = (index) => {
-    if (!isCellOpen[index]) {
+  const manejarDobleClicCelda = (indice) => {
+    if (!celdaAbierta[indice] || juegoTerminado.current) {
       return;
     }
 
-    const adjacentBombs = countAdjacentBombs(Math.floor(index / columna), index % columna);
-    const adjacentFlags = countAdjacentFlags(Math.floor(index / columna), index % columna);
+    const bombasAdyacentes = contarBombasAdyacentes(Math.floor(indice / columnas), indice % columnas);
+    const banderasAdyacentes = contarBanderasAdyacentes(Math.floor(indice / columnas), indice % columnas);
 
-    if (adjacentBombs > 0 && adjacentBombs === adjacentFlags) {
-      // Caso de doble clic válido, revelar casillas adyacentes
-      const newIsCellOpen = [...isCellOpen];
-      revealAdjacentCells(Math.floor(index / columna), index % columna, newIsCellOpen);
-      setIsCellOpen(newIsCellOpen);
+    if (bombasAdyacentes > 0 && bombasAdyacentes === banderasAdyacentes) {
+      const nuevaCeldaAbierta = [...celdaAbierta];
+      revelarCeldasAdyacentes(Math.floor(indice / columnas), indice % columnas, nuevaCeldaAbierta);
+      setCeldaAbierta(nuevaCeldaAbierta);
     }
   };
 
-  const countAdjacentBombs = (row, col) => {
-    const directions = [
+  const contarBombasAdyacentes = (fila, columna) => {
+    const direcciones = [
       [-1, -1], [-1, 0], [-1, 1],
       [0, -1], [0, 1],
       [1, -1], [1, 0], [1, 1]
     ];
-    let count = 0;
+    let contador = 0;
 
-    for (const [dr, dc] of directions) {
-      const newRow = row + dr;
-      const newCol = col + dc;
-      if (newRow >= 0 && newRow < fila && newCol >= 0 && newCol < columna) {
-        if (bombas.includes(`${newRow}-${newCol}`)) {
-          count++;
+    for (const [df, dc] of direcciones) {
+      const nuevaFila = fila + df;
+      const nuevaColumna = columna + dc;
+      if (nuevaFila >= 0 && nuevaFila < filas && nuevaColumna >= 0 && nuevaColumna < columnas) {
+        if (bombas.includes(`${nuevaFila}-${nuevaColumna}`)) {
+          contador++;
         }
       }
     }
 
-    return count;
+    return contador;
   };
 
-  const countAdjacentFlags = (row, col) => {
-    const directions = [
+  const contarBanderasAdyacentes = (fila, columna) => {
+    const direcciones = [
       [-1, -1], [-1, 0], [-1, 1],
       [0, -1], [0, 1],
       [1, -1], [1, 0], [1, 1]
     ];
-    let count = 0;
+    let contador = 0;
 
-    for (const [dr, dc] of directions) {
-      const newRow = row + dr;
-      const newCol = col + dc;
-      if (newRow >= 0 && newRow < fila && newCol >= 0 && newCol < columna) {
-        if (isFlagged[newRow * columna + newCol]) {
-          count++;
+    for (const [df, dc] of direcciones) {
+      const nuevaFila = fila + df;
+      const nuevaColumna = columna + dc;
+      if (nuevaFila >= 0 && nuevaFila < filas && nuevaColumna >= 0 && nuevaColumna < columnas) {
+        if (banderaPuesta[nuevaFila * columnas + nuevaColumna]) {
+          contador++;
         }
       }
     }
 
-    return count;
+    return contador;
   };
 
-  const revealAdjacentCells = (row, col, newIsCellOpen) => {
-    const directions = [
+  const revelarCeldasAdyacentes = (fila, columna, nuevaCeldaAbierta) => {
+    const direcciones = [
       [-1, -1], [-1, 0], [-1, 1],
       [0, -1], [0, 1],
       [1, -1], [1, 0], [1, 1]
     ];
 
-    for (const [dr, dc] of directions) {
-      const newRow = row + dr;
-      const newCol = col + dc;
-      const newIndex = newRow * columna + newCol;
+    for (const [df, dc] of direcciones) {
+      const nuevaFila = fila + df;
+      const nuevaColumna = columna + dc;
+      const nuevoIndice = nuevaFila * columnas + nuevaColumna;
 
-      if (newRow >= 0 && newRow < fila && newCol >= 0 && newCol < columna && !newIsCellOpen[newIndex] && !isFlagged[newIndex]) {
-        newIsCellOpen[newIndex] = true;
-        if (countAdjacentBombs(newRow, newCol) === 0) {
-          revealAdjacentCells(newRow, newCol, newIsCellOpen);
+      if (nuevaFila >= 0 && nuevaFila < filas && nuevaColumna >= 0 && nuevaColumna < columnas &&
+        !nuevaCeldaAbierta[nuevoIndice] && !banderaPuesta[nuevoIndice]) {
+        nuevaCeldaAbierta[nuevoIndice] = true;
+        if (contarBombasAdyacentes(nuevaFila, nuevaColumna) === 0) {
+          revelarCeldasAdyacentes(nuevaFila, nuevaColumna, nuevaCeldaAbierta);
         }
       }
     }
   };
 
-  const squares = [];
-
-  for (let row = 0; row < fila; row++) {
-    for (let col = 0; col < columna; col++) {
-      const index = row * columna + col;
-      const isCellOpened = isCellOpen[index];
-      const isCellFlagged = isFlagged[index];
-      const symbol = bombas.includes(`${row}-${col}`) ? faBomb : '';
-      const number = countAdjacentBombs(row, col);
-
-      squares.push(
+  const celdas = [];
+  for (let fila = 0; fila < filas; fila++) {
+    for (let columna = 0; columna < columnas; columna++) {
+      const indice = fila * columnas + columna;
+      const celdaAbiertaActual = celdaAbierta[indice];
+      const banderaPuestaActual = banderaPuesta[indice];
+      const esPosicionJugador = posicionJugador.fila === fila && posicionJugador.columna === columna;
+      const simbolo = bombas.includes(`${fila}-${columna}`) ? faBomb : '';
+      const numero = contarBombasAdyacentes(fila, columna);
+  
+      const estiloCelda = {
+        backgroundColor: celdaAbiertaActual ? '#e2e2e2' : '#bafbba',
+        border: '2px solid black',
+        position: 'relative',
+      };
+  
+      if (esPosicionJugador) {
+        estiloCelda.zIndex = 2;
+      }
+  
+      celdas.push(
         <div
-          key={`${row}-${col}`}
-          className={`square ${isCellFlagged ? 'flagged' : ''}`}
-          style={{
-            backgroundColor: isCellOpened ? '#e2e2e2' : '#bafbba',
-            border: '2px solid black',
-          }}
-          onClick={() => handleCellClick(index, false)}
-          onDoubleClick={() => handleDoubleCellClick(index)}
-          onContextMenu={(event) => {
-            event.preventDefault();
-            handleCellClick(index, true);
+          key={`${fila}-${columna}`}
+          className={`celda ${banderaPuestaActual ? 'bandera' : ''} ${esPosicionJugador ? 'jugador' : ''}`}
+          style={estiloCelda}
+          onClick={() => manejarClicCelda(indice, false)}
+          onDoubleClick={() => manejarDobleClicCelda(indice)}
+          onContextMenu={(evento) => {
+            evento.preventDefault();
+            manejarClicCelda(indice, true);
           }}
         >
+          {/* Contenedor para el jugador */}
+          {esPosicionJugador && (
+            <div className="jugador-container" style={{ position: 'absolute', top: 0, left: 0 }}>
+              {/* Puedes personalizar la apariencia del jugador aquí */}
+              <span role="img" aria-label="jugador">👤</span>
+            </div>
+          )}
+  
           <span>
-            {isCellFlagged ? (
+            {banderaPuestaActual ? (
               <FontAwesomeIcon icon={faFlag} />
-            ) : isCellOpened ? (
-              symbol !== '' ? (
-                <FontAwesomeIcon icon={symbol} />
-              ) : number > 0 ? (
-                number
+            ) : celdaAbiertaActual ? (
+              simbolo !== '' ? (
+                <FontAwesomeIcon icon={simbolo} />
+              ) : numero > 0 ? (
+                numero
               ) : (
                 ''
               )
-            ) : 
+            ) : (
               ' '
-            }
+            )}
           </span>
         </div>
       );
     }
   }
 
-  return (
-    <div className="chess-board" style={{
+return (
+  <div>
+  {/* Reproductor de audio */}
+  <AudioPlayer
+    src={urlMusica}
+    autoPlay={musicaReproduciendo}
+    controls
+    style={{ display: 'none' }}
+  />
+
+     {/* Botón para reproducir/detener música */}
+     <button onClick={() => setMusicaReproduciendo(!musicaReproduciendo)}>
+      {musicaReproduciendo ? 'Detener Música' : 'Reproducir Música'}
+    </button>
+
+    {/* Tablero de ajedrez */}
+    <div className="tablero-ajedrez" style={{
       display: 'grid',
-      gridTemplateColumns: `repeat(${columna}, 50px)`,
-      gridTemplateRows: `repeat(${fila}, 50px)`
+      gridTemplateColumns: `repeat(${columnas}, 50px)`,
+      gridTemplateRows: `repeat(${filas}, 50px)`
     }}>
-      {squares}
+       {celdas}
     </div>
-  );
-};
+  </div>
+);
+        }
 
 export default ChessBoard;
